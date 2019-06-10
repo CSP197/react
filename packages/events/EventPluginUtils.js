@@ -1,67 +1,56 @@
 /**
- * Copyright (c) 2013-present, Facebook, Inc.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import ReactErrorUtils from 'shared/ReactErrorUtils';
-import invariant from 'fbjs/lib/invariant';
-import warning from 'fbjs/lib/warning';
+import {invokeGuardedCallbackAndCatchFirstError} from 'shared/ReactErrorUtils';
+import invariant from 'shared/invariant';
+import warningWithoutStack from 'shared/warningWithoutStack';
 
 export let getFiberCurrentPropsFromNode = null;
 export let getInstanceFromNode = null;
 export let getNodeFromInstance = null;
 
-export const injection = {
-  injectComponentTree: function(Injected) {
-    ({
-      getFiberCurrentPropsFromNode,
-      getInstanceFromNode,
-      getNodeFromInstance,
-    } = Injected);
-    if (__DEV__) {
-      warning(
-        getNodeFromInstance && getInstanceFromNode,
-        'EventPluginUtils.injection.injectComponentTree(...): Injected ' +
-          'module is missing getNodeFromInstance or getInstanceFromNode.',
-      );
-    }
-  },
-};
-
-export function isEndish(topLevelType) {
-  return (
-    topLevelType === 'topMouseUp' ||
-    topLevelType === 'topTouchEnd' ||
-    topLevelType === 'topTouchCancel'
-  );
+export function setComponentTree(
+  getFiberCurrentPropsFromNodeImpl,
+  getInstanceFromNodeImpl,
+  getNodeFromInstanceImpl,
+) {
+  getFiberCurrentPropsFromNode = getFiberCurrentPropsFromNodeImpl;
+  getInstanceFromNode = getInstanceFromNodeImpl;
+  getNodeFromInstance = getNodeFromInstanceImpl;
+  if (__DEV__) {
+    warningWithoutStack(
+      getNodeFromInstance && getInstanceFromNode,
+      'EventPluginUtils.setComponentTree(...): Injected ' +
+        'module is missing getNodeFromInstance or getInstanceFromNode.',
+    );
+  }
 }
 
-export function isMoveish(topLevelType) {
-  return topLevelType === 'topMouseMove' || topLevelType === 'topTouchMove';
-}
-export function isStartish(topLevelType) {
-  return topLevelType === 'topMouseDown' || topLevelType === 'topTouchStart';
-}
-
-var validateEventDispatches;
+let validateEventDispatches;
 if (__DEV__) {
   validateEventDispatches = function(event) {
-    var dispatchListeners = event._dispatchListeners;
-    var dispatchInstances = event._dispatchInstances;
+    const dispatchListeners = event._dispatchListeners;
+    const dispatchInstances = event._dispatchInstances;
 
-    var listenersIsArr = Array.isArray(dispatchListeners);
-    var listenersLen = listenersIsArr
+    const listenersIsArr = Array.isArray(dispatchListeners);
+    const listenersLen = listenersIsArr
       ? dispatchListeners.length
-      : dispatchListeners ? 1 : 0;
+      : dispatchListeners
+        ? 1
+        : 0;
 
-    var instancesIsArr = Array.isArray(dispatchInstances);
-    var instancesLen = instancesIsArr
+    const instancesIsArr = Array.isArray(dispatchInstances);
+    const instancesLen = instancesIsArr
       ? dispatchInstances.length
-      : dispatchInstances ? 1 : 0;
+      : dispatchInstances
+        ? 1
+        : 0;
 
-    warning(
+    warningWithoutStack(
       instancesIsArr === listenersIsArr && instancesLen === listenersLen,
       'EventPluginUtils: Invalid `event`.',
     );
@@ -71,46 +60,35 @@ if (__DEV__) {
 /**
  * Dispatch the event to the listener.
  * @param {SyntheticEvent} event SyntheticEvent to handle
- * @param {boolean} simulated If the event is simulated (changes exn behavior)
  * @param {function} listener Application-level callback
  * @param {*} inst Internal component instance
  */
-function executeDispatch(event, simulated, listener, inst) {
-  var type = event.type || 'unknown-event';
+export function executeDispatch(event, listener, inst) {
+  const type = event.type || 'unknown-event';
   event.currentTarget = getNodeFromInstance(inst);
-  ReactErrorUtils.invokeGuardedCallbackAndCatchFirstError(
-    type,
-    listener,
-    undefined,
-    event,
-  );
+  invokeGuardedCallbackAndCatchFirstError(type, listener, undefined, event);
   event.currentTarget = null;
 }
 
 /**
  * Standard/simple iteration through an event's collected dispatches.
  */
-export function executeDispatchesInOrder(event, simulated) {
-  var dispatchListeners = event._dispatchListeners;
-  var dispatchInstances = event._dispatchInstances;
+export function executeDispatchesInOrder(event) {
+  const dispatchListeners = event._dispatchListeners;
+  const dispatchInstances = event._dispatchInstances;
   if (__DEV__) {
     validateEventDispatches(event);
   }
   if (Array.isArray(dispatchListeners)) {
-    for (var i = 0; i < dispatchListeners.length; i++) {
+    for (let i = 0; i < dispatchListeners.length; i++) {
       if (event.isPropagationStopped()) {
         break;
       }
       // Listeners and Instances are two parallel arrays that are always in sync.
-      executeDispatch(
-        event,
-        simulated,
-        dispatchListeners[i],
-        dispatchInstances[i],
-      );
+      executeDispatch(event, dispatchListeners[i], dispatchInstances[i]);
     }
   } else if (dispatchListeners) {
-    executeDispatch(event, simulated, dispatchListeners, dispatchInstances);
+    executeDispatch(event, dispatchListeners, dispatchInstances);
   }
   event._dispatchListeners = null;
   event._dispatchInstances = null;
@@ -124,13 +102,13 @@ export function executeDispatchesInOrder(event, simulated) {
  * true, or null if no listener returned true.
  */
 function executeDispatchesInOrderStopAtTrueImpl(event) {
-  var dispatchListeners = event._dispatchListeners;
-  var dispatchInstances = event._dispatchInstances;
+  const dispatchListeners = event._dispatchListeners;
+  const dispatchInstances = event._dispatchInstances;
   if (__DEV__) {
     validateEventDispatches(event);
   }
   if (Array.isArray(dispatchListeners)) {
-    for (var i = 0; i < dispatchListeners.length; i++) {
+    for (let i = 0; i < dispatchListeners.length; i++) {
       if (event.isPropagationStopped()) {
         break;
       }
@@ -151,7 +129,7 @@ function executeDispatchesInOrderStopAtTrueImpl(event) {
  * @see executeDispatchesInOrderStopAtTrueImpl
  */
 export function executeDispatchesInOrderStopAtTrue(event) {
-  var ret = executeDispatchesInOrderStopAtTrueImpl(event);
+  const ret = executeDispatchesInOrderStopAtTrueImpl(event);
   event._dispatchInstances = null;
   event._dispatchListeners = null;
   return ret;
@@ -170,8 +148,8 @@ export function executeDirectDispatch(event) {
   if (__DEV__) {
     validateEventDispatches(event);
   }
-  var dispatchListener = event._dispatchListeners;
-  var dispatchInstance = event._dispatchInstances;
+  const dispatchListener = event._dispatchListeners;
+  const dispatchInstance = event._dispatchInstances;
   invariant(
     !Array.isArray(dispatchListener),
     'executeDirectDispatch(...): Invalid `event`.',
@@ -179,7 +157,7 @@ export function executeDirectDispatch(event) {
   event.currentTarget = dispatchListener
     ? getNodeFromInstance(dispatchInstance)
     : null;
-  var res = dispatchListener ? dispatchListener(event) : null;
+  const res = dispatchListener ? dispatchListener(event) : null;
   event.currentTarget = null;
   event._dispatchListeners = null;
   event._dispatchInstances = null;

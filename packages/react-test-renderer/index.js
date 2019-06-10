@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-present, Facebook, Inc.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -9,10 +9,8 @@
 
 'use strict';
 
-var ReactTestRenderer = require('./src/ReactTestRenderer');
+const ReactTestRenderer = require('./src/ReactTestRenderer');
 
 // TODO: decide on the top-level export form.
 // This is hacky but makes it work with both Rollup and Jest.
-module.exports = ReactTestRenderer.default
-  ? ReactTestRenderer.default
-  : ReactTestRenderer;
+module.exports = ReactTestRenderer.default || ReactTestRenderer;

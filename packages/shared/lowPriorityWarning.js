@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2014-present, Facebook, Inc.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -19,12 +19,12 @@
  * same logic and follow the same code paths.
  */
 
-var lowPriorityWarning = function() {};
+let lowPriorityWarning = function() {};
 
 if (__DEV__) {
   const printWarning = function(format, ...args) {
-    var argIndex = 0;
-    var message = 'Warning: ' + format.replace(/%s/g, () => args[argIndex++]);
+    let argIndex = 0;
+    const message = 'Warning: ' + format.replace(/%s/g, () => args[argIndex++]);
     if (typeof console !== 'undefined') {
       console.warn(message);
     }
@@ -39,7 +39,7 @@ if (__DEV__) {
   lowPriorityWarning = function(condition, format, ...args) {
     if (format === undefined) {
       throw new Error(
-        '`warning(condition, format, ...args)` requires a warning ' +
+        '`lowPriorityWarning(condition, format, ...args)` requires a warning ' +
           'message argument',
       );
     }

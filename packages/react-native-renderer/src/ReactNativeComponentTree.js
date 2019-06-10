@@ -1,14 +1,14 @@
 /**
- * Copyright (c) 2013-present, Facebook, Inc.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
  */
 
-import invariant from 'fbjs/lib/invariant';
+import invariant from 'shared/invariant';
 
-var instanceCache = {};
-var instanceProps = {};
+const instanceCache = {};
+const instanceProps = {};
 
 export function precacheFiberNode(hostInst, tag) {
   instanceCache[tag] = hostInst;
@@ -24,7 +24,10 @@ function getInstanceFromTag(tag) {
 }
 
 function getTagFromInstance(inst) {
-  var tag = inst.stateNode._nativeTag;
+  let tag = inst.stateNode._nativeTag;
+  if (tag === undefined) {
+    tag = inst.stateNode.canonical._nativeTag;
+  }
   invariant(tag, 'All native instances should have a tag.');
   return tag;
 }

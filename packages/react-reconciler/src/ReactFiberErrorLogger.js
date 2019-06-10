@@ -1,5 +1,5 @@
 /**
- * Copyright (c) 2013-present, Facebook, Inc.
+ * Copyright (c) Facebook, Inc. and its affiliates.
  *
  * This source code is licensed under the MIT license found in the
  * LICENSE file in the root directory of this source tree.
@@ -7,18 +7,14 @@
  * @flow
  */
 
-import type {CapturedError} from './ReactFiberScheduler';
+import type {CapturedError} from './ReactCapturedValue';
 
-import invariant from 'fbjs/lib/invariant';
-
-const defaultShowDialog = (capturedError: CapturedError) => true;
-
-let showDialog = defaultShowDialog;
+import {showErrorDialog} from './ReactFiberErrorDialog';
 
 export function logCapturedError(capturedError: CapturedError): void {
-  const logError = showDialog(capturedError);
+  const logError = showErrorDialog(capturedError);
 
-  // Allow injected showDialog() to prevent default console.error logging.
+  // Allow injected showErrorDialog() to prevent default console.error logging.
   // This enables renderers like ReactNative to better manage redbox behavior.
   if (logError === false) {
     return;
@@ -34,6 +30,25 @@ export function logCapturedError(capturedError: CapturedError): void {
       willRetry,
     } = capturedError;
 
+    // Browsers support silencing uncaught errors by calling
+    // `preventDefault()` in window `error` handler.
+    // We record this information as an expando on the error.
+    if (error != null && error._suppressLogging) {
+      if (errorBoundaryFound && willRetry) {
+        // The error is recoverable and was silenced.
+        // Ignore it and don't print the stack addendum.
+        // This is handy for testing error boundaries without noise.
+        return;
+      }
+      // The error is fatal. Since the silencing might have
+      // been accidental, we'll surface it anyway.
+      // However, the browser would have silenced the original error
+      // so we'll print it first, and then print the stack addendum.
+      console.error(error);
+      // For a more detailed description of this block, see:
+      // https://github.com/facebook/react/pull/13384
+    }
+
     const componentNameMessage = componentName
       ? `The above error occurred in the <${componentName}> component:`
       : 'The above error occurred in one of your React components:';
@@ -47,9 +62,7 @@ export function logCapturedError(capturedError: CapturedError): void {
           `using the error boundary you provided, ${errorBoundaryName}.`;
       } else {
         errorBoundaryMessage =
-          `This error was initially handled by the error boundary ${
-            errorBoundaryName
-          }.\n` +
+          `This error was initially handled by the error boundary ${errorBoundaryName}.\n` +
           `Recreating the tree from scratch failed so React will unmount the tree.`;
       }
     } else {
@@ -73,21 +86,3 @@ export function logCapturedError(capturedError: CapturedError): void {
     console.error(error);
   }
 }
-
-export const injection = {
-  /**
-   * Display custom dialog for lifecycle errors.
-   * Return false to prevent default behavior of logging to console.error.
-   */
-  injectDialog(fn: (e: CapturedError) => boolean) {
-    invariant(
-      showDialog === defaultShowDialog,
-      'The custom dialog was already injected.',
-    );
-    invariant(
-      typeof fn === 'function',
-      'Injected showDialog() must be a function.',
-    );
-    showDialog = fn;
-  },
-};
